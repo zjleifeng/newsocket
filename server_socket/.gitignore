@@ -1,0 +1,9 @@
+.svn/
+*/var/*.log
+*/var/*.log.*
+*.pyc
+/etc
+logs/
+.DS_Store
+.idea/
+reload

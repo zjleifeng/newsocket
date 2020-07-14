@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<!-- saved from url=(0058)http://demo.qfpffmp.cn/cssthemes6/cpts_1957_dcu/index.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>websocket</title>
+  <!-- Meta tags -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <meta name="keywords" content="">
+  <script>
+	 addEventListener("load", function () { setTimeout(hideURLbar, 0); }, false); function hideURLbar() { window.scrollTo(0, 1); }
+  </script>
+  <!-- Meta tags -->
+  <!--stylesheets-->
+  <link href="/static/css/style.css" rel="stylesheet" type="text/css" media="all">
+  <!--//style sheet end here-->
+    <script type="application/javascript" src="/static/js/jquery-2.1.1.js"></script>
+    <script type="application/javascript">
+
+        $(document).ready(function () {
+            $("input[name='nick']").focus(function () {
+                $("#msg").text("");
+            });
+            $("input[name='room']").focus(function () {
+                $("#msg").text("");
+            });
+
+            $("#btn").click(function () {
+                var nick = $("input[name='nick']").val();
+                var room = $("input[name='room']").val();
+                window.location = '/?room=' + room + '&nick=' + nick;
+            });
+        });
+    </script>
+</head>
+<body>
+<div align="center">
+</div>
+</div>
+  <div class="mid-class">
+	 <div class="art-right-w3ls">
+		<h2>Websocket Chat Sign Up</h2>
+		<form>
+		   <div class="main">
+			  <div class="form-left-to-w3l">
+				 <input type="text" name="room" placeholder="房间号" required="">
+			  </div>
+			  <div class="form-left-to-w3l ">
+				 <input type="text" name="nick" placeholder="昵称" required="">
+			  </div>
+		   </div>
+
+		   <div class="btnn">
+			  <button type="submit" id="btn">Sign In</button>
+		   </div>
+
+            <div id="msg"></div>
+		</form>
+
+
+	 </div>
+	 <div class="art-left-w3ls">
+		<h1 class="header-w3ls">
+		   Websocket demo 聊天系统测试
+		</h1>
+	 </div>
+  </div>
+
+
+</body></html>
