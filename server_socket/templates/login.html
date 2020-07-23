@@ -17,7 +17,7 @@
     <script type="application/javascript">
 
         $(document).ready(function () {
-            $("input[name='nick']").focus(function () {
+            $("input[name='user']").focus(function () {
                 $("#msg").text("");
             });
             $("input[name='room']").focus(function () {
@@ -25,9 +25,9 @@
             });
 
             $("#btn").click(function () {
-                var nick = $("input[name='nick']").val();
+                var user = $("input[name='user']").val();
                 var room = $("input[name='room']").val();
-                window.location = '/?room=' + room + '&nick=' + nick;
+                window.location = '/?room=' + room + '&user=' + user;
             });
         });
     </script>
@@ -45,7 +45,7 @@
 				 <input type="text" name="room" placeholder="房间号" required="">
 			  </div>
 			  <div class="form-left-to-w3l ">
-				 <input type="text" name="nick" placeholder="昵称" required="">
+				 <input type="text" name="user" placeholder="昵称" required="">
 			  </div>
 		   </div>
 

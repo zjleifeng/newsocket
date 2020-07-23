@@ -13,9 +13,7 @@ from handlers.ws.views import MainHandler,ConcurrentView,AllUserCountView,YouinU
 
 urls = [
     url(r"/", MainHandler, {"room_handler": room_handler}),
-    url(r"/youin/(\w+)/", YouinUserHandler, {"room_handler": room_handler}),#无需用户id
     url(r"/youin/(\w+)/(\w+)/", YouinUserHandler, {"room_handler": room_handler}),#需要用户id
-
     url(r"/concurrent/(\w+)/", ConcurrentView),#get接口获取当前room并发人数
     url(r"/alluser/(\w+)/", AllUserCountView),  # get接口获取当前room总人数
 

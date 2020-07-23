@@ -7,17 +7,13 @@
 """
 
 import datetime
-import hashlib
 import json
 import logging
 import re
 import threading
 import time
 import uuid
-
-from tornado.escape import json_encode, recursive_unicode
-
-from config import settings
+from tornado.escape import json_encode
 from config.redis import RedisClient
 
 logger = logging.getLogger(__name__)
@@ -53,34 +49,13 @@ class RoomHandler(object):
             raise RuntimeError(
                 "未检测到用户id，由大小写字母、数字、-、_组成.")
 
-        # 校验是否满足需求（数量限制，名字限制）
         with rlock:
-            # #: 校验是否单台服务器已经超限
-            # if len(self.rooms_info) > settings.MAX_ROOMS:
-            #     raise RuntimeError("当前服务器已达最大房间数,{}".format(settings.MAX_ROOMS))
-            # #: 校验是否房间人员已经超限
-            # if room in self.rooms_info and len(
-            #         self.rooms_info[room]) >= settings.MAX_USERS_PER_ROOM:
-            #     raise RuntimeError("当前最大连接人数超过限制{}".format(settings.MAX_USERS_PER_ROOM))
-            # 添加到房间中
             client_id = str(uuid.uuid4().int)
             if not self.rooms_info.get(room):
                 self.rooms_info[room] = []
-            # 验证nick是否已经重复
-            # nicks = list(map(lambda x: x['nick'], self.rooms_info[room]))
-            # room_md5 = hashlib.md5(room.encode('utf-8')).hexdigest()
-            # nicks = recursive_unicode(self.redis.lrange(room_md5, 0, self.redis.llen(room_md5)))
-            # suffix = 1
-            # while True:
-            #     if nick in nicks:
-            #         nick += str(1)
-            #     else:
-            #         break
-            #     suffix += 1
 
             # 将客户端的信息保存至temp_conns中
-            self.temp_conns[client_id] = dict(room=room,user_id=user_id)
-            # self.redis.hset(name="temp_conns", key=client_id, value=json.dumps(dict(room=room, user_id=user_id)))
+            self.temp_conns[client_id] = dict(room=room, user_id=user_id)
             return client_id
 
     def add_client(self, client_id, wsconn):
@@ -98,15 +73,9 @@ class RoomHandler(object):
             # 在临时中取出client信息，并添加到clients_info中
             logger.info("pop_client_id:{}".format(client_id))
             client_info = self.temp_conns.pop(client_id)
-            # client_info_b = self.redis.hget('temp_conns', client_id)
-            # client_info = json.loads(recursive_unicode(client_info_b))
-            # if client_info:
-            #     res = self.redis.hdel('temp_conns', client_id)
-            #     logger.info("删除临时temp_conns:{}".format(res))
-
             client_info['conn'] = wsconn
             self.clients_info[client_id] = client_info
-            self.user_id=client_info['user_id']
+            self.user_id = client_info['user_id']
             # 在room中添加上连接信息
             self.rooms_info[client_info['room']].append(dict(
                 user_id=self.user_id,
@@ -114,26 +83,23 @@ class RoomHandler(object):
                 client_id=client_id
             ))
 
-
             # 存储房间所进入过的人和时间list
-            #nowtime=str(round(time.time()))#当前秒时间戳
-            #in_data={"client_id":client_id,"start_time":nowtime,"user_id":self.user_id}
-            #in_key="{}_all_user".format(client_info['room'])
-            #self.redis.rpush(in_key,json.dumps(in_data))
+            nowtime = str(round(time.time()))  # 当前秒时间戳
+            in_data = {"client_id": client_id, "start_time": nowtime, "user_id": self.user_id}
+            in_key = "{}_all_user".format(client_info['room'])
+            self.redis.rpush(in_key, json.dumps(in_data))
 
             # 存储redis进入房间的人以及时间Hash
-            #self.redis.hset(name="{}_static_info".format(client_info['room']), key=client_id, value=json.dumps(dict(start_time=nowtime,user_id=self.user_id)))
-
+            self.redis.hset(name="{}_static_info".format(client_info['room']), key=client_id,
+                            value=json.dumps(dict(start_time=nowtime, user_id=self.user_id)))
 
             # 用户列表放入redis缓存中
-            # room_md5 = hashlib.md5(client_info['room'].encode('utf-8')).hexdigest()
-            room_md5="{}_concurrent_user".format(client_info['room'])
+            room_md5 = "{}_concurrent_user".format(client_info['room'])
             self.redis.rpush(room_md5, self.user_id)
 
-            #存储所有来过的用户set去重
-            self.redis.sadd("{}_all_user_id".format(client_info['room']),self.user_id)
+            # 存储所有来过的用户set去重
+            self.redis.sadd("{}_all_user_id".format(client_info['room']), self.user_id)
             # 获取在线用户列表
-            # nicks = recursive_unicode(self.redis.lrange(room_md5, 0, self.redis.llen(room_md5)))
         return {"room": client_info['room'], "user_id": self.user_id}
 
     def remove_client(self, client_id):
@@ -145,7 +111,6 @@ class RoomHandler(object):
         :param client_id: 根据client_id通知信息
         :return:
         """
-        # 在clients_info中移除client_id
         if client_id not in self.clients_info:
             return
 
@@ -153,25 +118,20 @@ class RoomHandler(object):
             client_info = self.clients_info.get(client_id)
             room = client_info['room']
             user_id = client_info['user_id']
-
-            # 在rooms_info中移除room中的client
             room_client = list(filter(lambda x: x['client_id'] == client_id,
                                       self.rooms_info[room]))
 
             # 在redis中，将对应的用户移除
-            room_md5="{}_concurrent_user".format(room)
-            # room_md5 = hashlib.md5(room.encode('utf-8')).hexdigest()
+            room_md5 = "{}_concurrent_user".format(room)
             self.redis.lrem(room_md5, 0, user_id)
 
             # #更新用户离开时间hash
-            # has_data=self.redis.hget(name="{}_static_info".format(client_info['room']), key=client_id)
-            # has_data_str=str(has_data, encoding = "utf-8")
-            # js_data=json.loads(has_data_str)
-            # js_data["end_data"]=round(time.time())
-            # self.redis.hset(name="{}_static_info".format(client_info['room']), key=client_id, value=json.dumps(js_data))
+            has_data = self.redis.hget(name="{}_static_info".format(client_info['room']), key=client_id)
+            has_data_str = str(has_data, encoding="utf-8")
+            js_data = json.loads(has_data_str)
+            js_data["end_data"] = round(time.time())
+            self.redis.hset(name="{}_static_info".format(client_info['room']), key=client_id, value=json.dumps(js_data))
 
-            # 获取房间列表
-            # nicks = recursive_unicode(self.redis.lrange(room_md5, 0, self.redis.llen(room_md5)))
             # 将当前client在rooms中移除
             self.rooms_info[room].remove(room_client[0])
 
@@ -224,7 +184,6 @@ class RoomHandler(object):
             msg = json.dumps(msg)
             for conn in conns:
                 conn.write_message(msg)
-
 
 
 class EventHandler(object):

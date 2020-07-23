@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 '''
-@File  : AliyunCredentialsProvider2.py.py
+@File  : AliyunCredentialsProvider2.py
 @Author: adam
 @Date  : 2019/12/19 下午2:01
 '''

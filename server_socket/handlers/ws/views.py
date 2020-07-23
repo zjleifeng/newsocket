@@ -16,155 +16,11 @@ from config import settings
 from utils.rabbitmq import RabbitMQClient
 from utils.room_handler import rlock
 from utils.tornado.web import BaseWebsocketHandler, BaseRequestHandler, RequestHandler
-from tornado.escape import recursive_unicode
-import hashlib, json
+import json
 from config.redis import RedisClient
-import time,datetime
+import time, datetime
 
 logger = logging.getLogger(__name__)
-
-
-class YouinHandler(BaseWebsocketHandler):
-    executor = ThreadPoolExecutor()
-
-    def initialize(self, room_handler):
-        self.room_handler = room_handler
-
-    @coroutine
-    def open(self, *args, **kwargs):
-        """
-        初始化时，确定用户信息
-        """
-        # 根据登录后设置的cookie信息获取room和nick信息，并关联wsconn
-        self.user_id = str(uuid.uuid4().int)
-        # self.user_id=args[0]
-        self.room = args[0]
-        self.client_id = self.room_handler.add_room(self.room, self.user_id)
-        with rlock:
-            logger.info("add_client_id:{}".format(self.client_id))
-            result = self.room_handler.add_client(self.client_id, self)
-
-        # send_data = {
-        #     "type": "join",
-        #     "data": result
-        # }
-        # nicks_data={
-        #     "type":"nicks",
-        #     "data":{"nicks":result['nicks'],
-        #             "nick":self.client_id,
-        #             "room":self.room
-        #             }
-        # }
-        # 通知同一房间所有人某人加入
-        # yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE, settings.WEBSOCKET_SEND_EXCHANGE)
-        # 房间并发人数
-        # yield self.publish_message(nicks_data, settings.WEBSOCKET_SEND_EXCHANGE,settings.WEBSOCKET_SEND_EXCHANGE)
-
-        # 单进程不使用amqp
-        # yield self.publish_message(msg_type="join")
-        # yield self.publish_message(msg_type="nicks")
-
-    @coroutine
-    def on_message(self, message):
-        """
-        收到发送消息通知
-        通知在房间的所有用户
-        """
-        try:
-            msg = json_decode(message)
-            e_type = msg.get("type")
-            t_data = msg.get("msg")
-            msg_type = msg.get("msg_type")
-            client_info = self.room_handler.clients_info.get(self.client_id)
-            if e_type == "message":
-                if client_info:
-                    room = client_info['room']
-                    user_id = client_info['user_id']
-
-                    event_data = {}
-                    event_data['room'] = room
-                    event_data['user_id'] = user_id
-                    event_data['msg_type'] = msg_type
-                    event_data['msg'] = t_data
-
-                    send_data = {
-                        "type": "send_message",
-                        "data": event_data
-                    }
-                    yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE,
-                                               settings.WEBSOCKET_SEND_EXCHANGE)
-
-                    # yield self.publish_message(msg_type=msg_type,data=event_data)
-                else:
-                    logger.error("收到用户[{}]信息，但本地信息不存在 [{}]".format(self.client_id, self.room_handler.clients_info))
-            elif e_type == "heartbeat":
-                send_data = {
-                    "type": "heartbeat",
-                    "data": {
-                        "room": client_info['room'],
-                        "user_id": client_info['user_id'],
-                        "client_id": self.client_id
-                    }
-                }
-                # yield self.publish_message(msg_type="HeartBeat", data=event_data)
-                yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE,
-                                           settings.WEBSOCKET_SEND_EXCHANGE)
-
-            else:
-                logger.warning("暂时不支持的类型 type={}".format(e_type))
-        except:
-            logger.exception("处理事件失败")
-
-    @coroutine
-    def on_ping(self, data):
-        # print('ping:', data)
-        pass
-
-    @coroutine
-    def on_pong(self, data):
-        # print(datetime.datetime.now())
-        # print('pong:', data)
-        if not data:
-            byte_ping = round(time.time() * 1000).to_bytes(13, 'big')
-            self.ping(byte_ping)
-        pass
-
-    @coroutine
-    def on_close(self):
-        """
-        关闭或者断开连接
-        :return:
-        """
-        result = self.room_handler.remove_client(self.client_id)
-        # if result:
-
-            # 离开房间
-            # yield self.publish_message(msg_type="leave")
-            # send_data = {
-            #     "type": "leave",
-            #     "data": result
-            # }
-            # yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE, settings.WEBSOCKET_SEND_EXCHANGE)
-
-
-    def check_origin(self, origin):
-        """
-        校验来源
-        :param origin:
-        :return:
-        """
-        return True
-    #单机不使用amqp发送数据
-    # @run_on_executor
-    # def publish_message(self, msg_type,data=None):
-    #     self.room_handler.send_msg(self.client_id, msg_type=msg_type,message=data)
-
-    @run_on_executor
-    def publish_message(self, data, exchange_name, routing_key):
-        rmq_client = RabbitMQClient()
-        rmq_client.publish_message(data, exchange_name, routing_key, exchange_type='direct')
-
-
 
 
 class YouinUserHandler(BaseWebsocketHandler):
@@ -178,9 +34,8 @@ class YouinUserHandler(BaseWebsocketHandler):
         """
         初始化时，确定用户信息
         """
-        # self.client_id = str(uuid.uuid4().int)
         user_id = args[1]
-        if user_id=="false" or not user_id:
+        if user_id == "false" or not user_id:
             user_id = str(uuid.uuid4().int)
         self.user_id = user_id
         self.room = args[0]
@@ -189,25 +44,13 @@ class YouinUserHandler(BaseWebsocketHandler):
             logger.info("add_client_id:{}".format(self.client_id))
             result = self.room_handler.add_client(self.client_id, self)
 
-        # send_data = {
-        #     "type": "join",
-        #     "data": result
-        # }
-        # nicks_data={
-        #     "type":"nicks",
-        #     "data":{"nicks":result['nicks'],
-        #             "nick":self.client_id,
-        #             "room":self.room
-        #             }
-        # }
+        send_data = {
+            "type": "join",
+            "data": result
+        }
         # 通知同一房间所有人某人加入
-        # yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE, settings.WEBSOCKET_SEND_EXCHANGE)
-        # 房间并发人数
-        # yield self.publish_message(nicks_data, settings.WEBSOCKET_SEND_EXCHANGE,settings.WEBSOCKET_SEND_EXCHANGE)
+        yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE, settings.WEBSOCKET_SEND_EXCHANGE)
 
-        # 单进程不使用amqp
-        # yield self.publish_message(msg_type="join")
-        # yield self.publish_message(msg_type="nicks")
 
     @coroutine
     def on_message(self, message):
@@ -239,7 +82,6 @@ class YouinUserHandler(BaseWebsocketHandler):
                     yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE,
                                                settings.WEBSOCKET_SEND_EXCHANGE)
 
-                    # yield self.publish_message(msg_type=msg_type,data=event_data)
                 else:
                     logger.error("收到用户[{}]信息，但本地信息不存在 [{}]".format(self.client_id, self.room_handler.clients_info))
             elif e_type == "heartbeat":
@@ -251,16 +93,15 @@ class YouinUserHandler(BaseWebsocketHandler):
                         "client_id": self.client_id
                     }
                 }
-                # yield self.publish_message(msg_type="HeartBeat", data=event_data)
                 yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE,
                                            settings.WEBSOCKET_SEND_EXCHANGE)
-            #记录数据到数据库
-            elif e_type=="record":
-                if msg_type=="start":
+            # 记录数据到数据库
+            elif e_type == "record":
+                if msg_type == "start":
                     nowtime = str(round(time.time()))
                     self.redis.hset(name="{}_static_info".format(client_info['room']), key=self.client_id,
-                                value=json.dumps(dict(start_time=nowtime, user_id=self.user_id)))
-                elif msg_type=="end":
+                                    value=json.dumps(dict(start_time=nowtime, user_id=self.user_id)))
+                elif msg_type == "end":
                     # 更新用户离开时间hash
                     has_data = self.redis.hget(name="{}_static_info".format(client_info['room']), key=self.client_id)
                     has_data_str = str(has_data, encoding="utf-8")
@@ -295,16 +136,14 @@ class YouinUserHandler(BaseWebsocketHandler):
         :return:
         """
         result = self.room_handler.remove_client(self.client_id)
-        # if result:
 
-            # 离开房间
-            # yield self.publish_message(msg_type="leave")
-            # send_data = {
-            #     "type": "leave",
-            #     "data": result
-            # }
-            # yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE, settings.WEBSOCKET_SEND_EXCHANGE)
-
+        # 离开房间
+        yield self.publish_message(msg_type="leave")
+        send_data = {
+            "type": "leave",
+            "data": result
+        }
+        yield self.publish_message(send_data, settings.WEBSOCKET_SEND_EXCHANGE, settings.WEBSOCKET_SEND_EXCHANGE)
 
     def check_origin(self, origin):
         """
@@ -313,7 +152,8 @@ class YouinUserHandler(BaseWebsocketHandler):
         :return:
         """
         return True
-    #单机不使用amqp发送数据
+
+    # 单机不使用amqp发送数据
     # @run_on_executor
     # def publish_message(self, msg_type,data=None):
     #     self.room_handler.send_msg(self.client_id, msg_type=msg_type,message=data)
@@ -322,7 +162,6 @@ class YouinUserHandler(BaseWebsocketHandler):
     def publish_message(self, data, exchange_name, routing_key):
         rmq_client = RabbitMQClient()
         rmq_client.publish_message(data, exchange_name, routing_key, exchange_type='direct')
-
 
 
 class MainHandler(BaseRequestHandler):
@@ -341,11 +180,6 @@ class MainHandler(BaseRequestHandler):
             #: 房间名字
             room = self.get_argument('room')
             #: 用户名字
-            # nick = self.get_argument('nick')
-            #: 指定房间添加指定用户
-            # client_id = self.room_handler.add_room(room, nick)
-            # 给浏览器设置cookie,指定client_id
-            # self.set_cookie("client_id", client_id)
             self.render("home.html", room_name=room)
         except tornado.web.MissingArgumentError:
             self.render("login.html")
@@ -366,19 +200,20 @@ class ConcurrentView(RequestHandler):
         nicks = myredis.llen(room_md5)
         alluserkey = "{}_all_user_id".format(room)
         user_count = myredis.scard(alluserkey)
-        data = {"in_user_count": nicks,"all_user_count":user_count}
+        data = {"in_user_count": nicks, "all_user_count": user_count}
         # self.write(json.dumps(data, ensure_ascii=False))
-        self.render("count.html",inuser=nicks,alluser=user_count, room_name=room)
+        self.render("count.html", inuser=nicks, alluser=user_count, room_name=room)
 
 
 class AllUserCountView(RequestHandler):
     """
     获取当前room总计入人数
     """
+
     def get(self, *args, **kwargs):
         myredis = RedisClient.get_client()
         room = args[0]
-        key="{}_all_user_id".format(room)
+        key = "{}_all_user_id".format(room)
         user_count = myredis.scard(key)
         print(user_count)
         data = {"allcount": user_count}

@@ -17,10 +17,10 @@ TEMP_PATH = os.path.join(BASE_PATH, 'temp')
 
 DEBUG = False
 
-# 阿里云%AMQP配置
+# 阿里云AMQP配置
 RABBIT_MQ_HOST = "**"
 RABBIT_MQ_PORT = 5672
-virtualHost = "youin_test_zhang"
+virtualHost = "**"
 accessKey = "**"
 # 阿里云的accessSecret
 accessSecret = "**"

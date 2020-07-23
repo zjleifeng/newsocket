@@ -17,42 +17,20 @@ LOGGER = logging.getLogger(__name__)
 
 
 class RabbitMQClient:
-    def __init__(self, host=settings.RABBIT_MQ_HOST, port=settings.RABBIT_MQ_PORT,virtualHost=settings.virtualHost):
+    def __init__(self, host=settings.RABBIT_MQ_HOST, port=settings.RABBIT_MQ_PORT, virtualHost=settings.virtualHost):
         self.host = host
         self.port = port
-        self.virtualHost=virtualHost
-        # self.user = user
-        # self.password = password
+        self.virtualHost = virtualHost
         self.provider = AliyunCredentialsProvider(settings.accessKey, settings.accessSecret, settings.resourceOwnerId)
 
     def get_conn(self):
-        credentials = pika.PlainCredentials(self.provider.get_username(), self.provider.get_password(), erase_on_connect=True)
+        credentials = pika.PlainCredentials(self.provider.get_username(), self.provider.get_password(),
+                                            erase_on_connect=True)
         return pika.BlockingConnection(pika.ConnectionParameters(self.host, self.port, self.virtualHost, credentials))
-
-    # def __init__(self, host=settings.RABBIT_MQ_HOST, port=settings.RABBIT_MQ_PORT,
-    #              user=settings.RABBIT_MQ_USER, password=settings.RABBIT_MQ_PASSWORD):
-    #     self.host = host
-    #     self.port = port
-    #     self.user = user
-    #     self.password = password
-
-    # def get_conn(self):
-    #     """
-    #     获取rabbitmq的conn
-    #     :return:
-    #     """
-    #     user_pwd = pika.PlainCredentials(self.user, self.password)
-    #     # get connection
-    #     conn = pika.BlockingConnection(
-    #         pika.ConnectionParameters(self.host, self.port, credentials=user_pwd)
-    #     )
-    #     return conn
 
     def get_channel(self, exchange_name, exchange_type='fanout'):
         conn = self.get_conn()
-        # get channel
         channel = conn.channel()
-        # 声明直连交换机
         channel.exchange_declare(exchange=exchange_name, exchange_type=exchange_type)
         return conn, channel
 

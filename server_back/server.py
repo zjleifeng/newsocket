@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def rabbitmq_callback(ch, method, properties, body):
     """
-    amqo回调函数
+    amqp回调函数
     """
     logger.info("开始处理消息")
     event_handler = EventHandler()
@@ -45,9 +45,6 @@ def run():
     try:
         client = RabbitMQClient()
         channel = client.get_channel(config.WEBSOCKET_SEND_EXCHANGE, exchange_type='direct')
-        # 声明临时队列 , param exclusive 排他  durable 持久化
-        # tmp_queue=channel.queue_declare(exclusive=True)
-        # queue_name = tmp_queue.method.queue
         queue_name = '{}_task_queue'.format(config.WEBSOCKET_SEND_EXCHANGE)
         channel.queue_declare(durable=True, queue='{}_task_queue'.format(config.WEBSOCKET_SEND_EXCHANGE))
 

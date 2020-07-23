@@ -184,8 +184,6 @@ def main():
     print("start")
 
     options.logging = native_str(settings.LOGGING_LEVEL)
-    # parse_command_line 的时候将 logging 的根级别设置为 info
-    # options.parse_command_line()
     try:
         asyncio.set_event_loop_policy(AnyThreadEventLoopPolicy())
     except:

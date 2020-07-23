@@ -66,7 +66,7 @@ class EventHandler(object):
 
     def heartbeat(self, data):
         """
-        心跳
+        定时消息（弃用）
         """
         send_data = {
             "type": "heartbeat",
